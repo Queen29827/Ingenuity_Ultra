@@ -1,1 +1,1140 @@
+import math, random, sys
+from pathlib import Path
+import pygame
+
+# SPACE QUEST I: ENDEAVOUR FOR OPPORTUNITY
+# Install: python -m pip install pygame
+# Run: python game.py
+# Flat 2D educational game. See SOURCES.txt for NASA/JPL references.
+
+pygame.init()
+try:
+    pygame.mixer.init()
+    AUDIO_ERROR = None
+except pygame.error as exc:
+    AUDIO_ERROR = str(exc)
+    sys.stdout.write(f"Audio is unavailable: {exc}\n")
+
+ROOT = Path(__file__).parent
+ART, AUDIO, NASA_ART = ROOT/"assets"/"scratch", ROOT/"assets"/"sfx", ROOT/"assets"/"nasa"
+W,H,FPS = 1180,760,60
+screen=pygame.display.set_mode((W,H))
+pygame.display.set_caption("SPACE QUEST I: Endeavour for Opportunity")
+clock=pygame.time.Clock()
+F=pygame.font.SysFont("arial",25)
+S=pygame.font.SysFont("arial",18)
+M=pygame.font.SysFont("arial",32,True)
+B=pygame.font.SysFont("arial",52,True)
+Q=pygame.font.SysFont("arial",38,True)
+STORY=pygame.font.SysFont("arial",30,True)
+CREDITS=pygame.font.SysFont("arial",34,True)
+T=pygame.font.SysFont("arial",15)
+WHITE=(245,247,250); PALE=(205,218,230); GOLD=(255,204,108)
+CYAN=(100,225,235); GREEN=(115,220,155); RED=(235,105,95)
+DARK=(7,12,24); PANEL=(8,18,33); MUTED=(145,165,184)
+
+SOURCES={
+"Viking":"https://science.nasa.gov/mission/viking/",
+"Sojourner":"https://science.nasa.gov/mission/mars-pathfinder/",
+"Spirit & Opportunity":"https://science.nasa.gov/mission/mars-exploration-rovers-spirit-and-opportunity/",
+"Opportunity":"https://science.nasa.gov/mission/mer-opportunity/",
+"Phoenix":"https://science.nasa.gov/mission/phoenix/",
+"InSight":"https://science.nasa.gov/mission/insight/",
+"Ingenuity":"https://www.nasa.gov/news-release/after-three-years-on-mars-nasas-ingenuity-helicopter-mission-ends/",
+"Ingenuity investigation":"https://www.nasa.gov/missions/mars-2020-perseverance/ingenuity-helicopter/nasa-performs-first-aircraft-accident-investigation-on-another-world/",
+"Opportunity last message":"https://science.nasa.gov/resource/opportunitys-last-message/",
+"Phoenix lander photo":"https://photojournal.jpl.nasa.gov/catalog/PIA10701",
+"Sojourner photo":"https://photojournal.jpl.nasa.gov/catalog/PIA04318",
+"Viking lander photo":"https://photojournal.jpl.nasa.gov/catalog/PIA00396",
+"Spirit rover image":"https://photojournal.jpl.nasa.gov/catalog/PIA05137",
+"Opportunity panorama":"https://photojournal.jpl.nasa.gov/catalog/PIA18595",
+"InSight first image":"https://photojournal.jpl.nasa.gov/catalog/PIA22829",
+"Ingenuity landing graphic":"https://photojournal.jpl.nasa.gov/catalog/PIA26482",
+"John Callas interview":"https://www.jpl.nasa.gov/podcasts/on-a-mission-season-1/season-4-mars-rovers/episode-4-a-lifetime-on-mars-the-adventures-of-spirit-and-opportunity/"
+}
+FOUND_GALACTIC_EGGS=set()
+GALACTIC_EGGS=[
+    ("twin_suns","Tatooine-style twin-sun beacon"),
+    ("training_remote","Jedi training remote"),
+    ("asteroid_patrol","Asteroid-field patrol"),
+    ("energy_blade","Lost energy blade"),
+    ("blue_milk","Blue milk supply crate"),
+    ("opportunity_postcard","Opportunity's real Mars panorama")
+]
+FACTS=[
+("VIKING","Viking 1 landed on July 20, 1976, seven years after Apollo 11 landed on the Moon.","Viking"),
+("VIKING","Viking 1 was planned for 90 days on Mars but operated for more than six years.","Viking"),
+("VIKING","Viking 2 landed at Utopia Planitia on September 3, 1976.","Viking"),
+("VIKING","Viking 1 sent the first photograph from Mars' surface just minutes after landing.","Viking"),
+("SOJOURNER","Sojourner was about the size of a microwave oven.","Sojourner"),
+("SOJOURNER","Sojourner was planned for 7 sols but operated for 83. A sol is a Martian day.","Sojourner"),
+("SOJOURNER","Sojourner drove about 100 metres across the Martian surface.","Sojourner"),
+("SOJOURNER","Pathfinder returned more than 16,500 lander images and 550 images from Sojourner.","Sojourner"),
+("SOJOURNER","Pathfinder bounced about 15 times on its airbags before coming to rest on Mars.","Sojourner"),
+("SPIRIT","Spirit's stuck wheel accidentally exposed bright, silica-rich soil near Home Plate.","Spirit & Opportunity"),
+("SPIRIT","Spirit drove about 7.7 kilometres before becoming stuck in soft soil.","Spirit & Opportunity"),
+("OPPORTUNITY","Opportunity was designed for 90 sols and lasted 5,111 sols.","Opportunity"),
+("OPPORTUNITY","Opportunity drove about 45.16 kilometres, farther than a marathon.","Opportunity"),
+("OPPORTUNITY","Opportunity's landing was a cosmic 'hole in one': it bounced into a small crater.","Opportunity"),
+("OPPORTUNITY","Opportunity was the first rover to drive a marathon distance on another world.","Opportunity"),
+("PHOENIX","A Mars orbiter photographed Phoenix while it descended by parachute—the first image of one spacecraft landing on another world.","Phoenix"),
+("PHOENIX","Phoenix's robotic arm was nearly 2.5 metres long and delivered samples to onboard instruments.","Phoenix"),
+("PHOENIX","Phoenix landed at 68.22 degrees north latitude on Mars' arctic plains.","Phoenix"),
+("PHOENIX","Phoenix sent a full 360-degree panorama within four days of landing.","Phoenix"),
+("INSIGHT","InSight's robotic arm stretched about 1.8 metres from its base to its grapple.","InSight"),
+("INSIGHT","InSight sensors captured a low rumble from Martian winds estimated at 5 to 7 metres per second.","InSight"),
+("INSIGHT","Two tiny CubeSats named WALL-E and EVE flew with InSight to relay its landing news.","InSight"),
+("INGENUITY","Ingenuity was designed for up to five flights but completed 72.","Ingenuity"),
+("INGENUITY","Ingenuity made the first powered, controlled flight on another planet on April 19, 2021.","Ingenuity"),
+("INGENUITY","Ingenuity carried a tiny piece of fabric from the Wright brothers' 1903 airplane.","Ingenuity"),
+("INGENUITY","Rotor damage during Ingenuity's 72nd flight ended its mission in January 2024.","Ingenuity"),
+("DUST STORMS","Opportunity's last communication arrived on June 10, 2018, during a planet-wide dust storm.","Opportunity"),
+("DUST STORMS","NASA sent more than a thousand recovery commands before declaring Opportunity's mission over.","Opportunity")
+]
+MISSIONS=[
+dict(id="viking",name="Viking 1 & 2",year="1976",pos=(.23,.28),tag="THE FIRST FOOTPRINTS",machine="LANDERS",
+brief="Restore the Viking camera relay and recover the first surface-weather archive.",
+fact="Viking 1 and Viking 2 were the first U.S. landers to successfully operate on Mars.",source="Viking",
+task="camera",clue="VIKING ARCHIVE: early surface images and weather data",
+detail="Viking 1 landed at Chryse Planitia on July 20, 1976. Viking 2 landed at Utopia Planitia on September 3, 1976. Both landers remained at their landing sites.",
+lesson="Engineering: a stationary lander can study a world with cameras, weather sensors and robotic instruments."),
+dict(id="sojourner",name="Sojourner / Pathfinder",year="1997",pos=(.39,.36),tag="THE FIRST ROVER",machine="ROVER",
+brief="Find the resource drive and run a rock-composition scan.",
+fact="Sojourner was planned for 7 sols and worked for 83.",source="Sojourner",
+task="drive",clue="PATHFINDER DATA DRIVE: rover chemistry readings",
+detail="Pathfinder landed on July 4, 1997, and delivered Sojourner, the first rover to drive on Mars. Sojourner drove about 100 metres and analysed rocks.",
+lesson="Engineering: a small mobile robot can inspect multiple targets. Pathfinder also demonstrated an airbag landing system."),
+dict(id="spirit",name="Spirit",year="2004–2010",pos=(.66,.43),tag="THE STUCK TWIN",machine="ROVER",
+brief="Free a jammed wheel and uncover the bright soil beneath the dust.",
+fact="A wheel that dragged through the soil exposed silica-rich material near Home Plate.",source="Spirit & Opportunity",
+task="wheel",clue="SPIRIT TRACE: silica-rich soil evidence",
+detail="Spirit landed in Gusev Crater on January 4, 2004. It drove about 7.7 km. Soft soil trapped it in 2009; it stopped communicating in March 2010.",
+lesson="Engineering: an unexpected mechanical failure can reveal science. Spirit's dragging wheel exposed bright material with an unexpected chemical signature."),
+dict(id="phoenix",name="Phoenix",year="2008",pos=(.52,.13),tag="THE HIDDEN ICE",machine="LANDER",
+brief="Use Phoenix's robotic arm to collect three bright ice samples and dodge dust.",
+fact="Phoenix's robotic arm was nearly 2.5 metres long and delivered samples to onboard instruments.",source="Phoenix",
+task="ice",clue="PHOENIX SAMPLE: near-surface ice",
+detail="Phoenix landed on May 25, 2008, in the Martian north. Its robotic arm collected soil and ice samples and delivered them to onboard instruments.",
+lesson="Engineering: a robotic arm can dig and deliver samples to instruments. Phoenix eventually lost power as northern winter reduced sunlight."),
+dict(id="insight",name="InSight",year="2018–2022",pos=(.77,.24),tag="THE PLANET'S PULSE",machine="LANDER",
+brief="Tune the seismometer and identify marsquake signals hidden in the noise.",
+fact="InSight's sensors recorded more than 1,300 marsquakes.",source="InSight",
+task="quake",clue="INSIGHT SEISMIC FILE: Mars interior data",
+detail="InSight landed on November 26, 2018. Its seismometer listened for marsquakes. Dust reduced its solar power and NASA ended the mission in December 2022.",
+lesson="Engineering: instruments can study a planet from one fixed location. Seismology uses vibrations to infer what lies beneath the surface."),
+dict(id="ingenuity",name="Ingenuity",year="2021–2024",pos=(.87,.55),tag="THE SKY SCOUT",machine="HELICOPTER",
+brief="Reconstruct the flight recorder and align the damaged rotor diagram.",
+fact="Ingenuity was designed for five flights but completed 72 before rotor damage ended its mission.",source="Ingenuity",
+task="rotor",clue="INGENUITY FLIGHT LOG: aerial scouting data",
+detail="Ingenuity made the first powered, controlled flight on another planet on April 19, 2021. It completed 72 flights. Rotor damage during its final flight ended the mission in January 2024.",
+lesson="Engineering: flight on Mars is possible despite its thin atmosphere. Ingenuity is now stationary, not active."),
+dict(id="opportunity",name="Opportunity",year="2004–2018",pos=(.36,.72),tag="THE FINAL DESTINATION",machine="ROVER",
+brief="Reach Opportunity's final location, survive a replay of the 2018 global dust storm, and recover its last science archive.",
+fact="Opportunity was planned for 90 sols and operated for 5,111 sols, travelling 45.16 km.",source="Opportunity",
+task="storm",clue="OPPORTUNITY ARCHIVE: final transmission and mission legacy",
+detail="Opportunity landed on January 24, 2004, and explored Meridiani Planum. Its last communication arrived June 10, 2018, during a global dust storm. NASA declared the mission over in February 2019.",
+lesson="Engineering: solar-powered spacecraft need energy reserves and safe modes. Dust blocked sunlight from Opportunity's panels, and the rover never contacted Earth again.")
+]
+CLUE_NAMES=["Landing record","Rock chemistry","Silica trace","Phoenix ice sample","Mars interior signal","Aerial survey log","Opportunity final archive"]
+
+def load_art(n):
+    try:return pygame.image.load(ART/n).convert_alpha()
+    except (pygame.error,FileNotFoundError):return None
+def load_nasa_art(n):
+    try:return pygame.image.load(NASA_ART/n).convert()
+    except (pygame.error,FileNotFoundError) as exc:
+        print(f"Could not load NASA image {n}: {exc}")
+        return None
+ARTS={"rover":load_art("roverop_roverop.png"),"mars":load_art("Stage_Mars_OG.png"),
+      "stars":load_art("Stage_Stars.png"),"memory":load_art("Stage_MarsiwanKenobi.png"),
+      "launch":load_art("Stage_KennedyLaunch.png"),"starportunity":load_art("Stage_starportunity.png"),
+      "mars_map":load_art("Stage_MARSMAP.png"),"memory_sprite":load_art("Sprite1_costume1.png"),
+      "life_sprite":load_art("Sprite4_costume1.png"),
+      "phoenix_photo":load_nasa_art("phoenix_lander_PIA10701.jpg"),
+      "sojourner_photo":load_nasa_art("sojourner_PIA04318.jpg"),
+      "viking_photo":load_nasa_art("viking_lander_PIA00396.jpg"),
+      "spirit_photo":load_nasa_art("spirit_rover_PIA05137.jpg"),
+      "opportunity_photo":load_nasa_art("opportunity_panorama_PIA18595.jpg"),
+      "insight_photo":load_nasa_art("insight_lander_PIA22829.jpg"),
+      "ingenuity_photo":load_nasa_art("ingenuity_landing_PIA26482.jpg")}
+SFX={}
+SFX_FILES={"Computer_Beep.wav":"Computer_Beep.wav","Collect.wav":"Collect.wav",
+           "Buzz_Whir.wav":"Buzz_Whir.wav","Laser1.wav":"Laser1.wav","Laser2.wav":"Laser2.wav",
+           "Marsaudio.wav":"Marsaudio.wav","Pop.wav":"pop.wav","Space_Ripple.wav":"Space_Ripple.wav"}
+AUDIO_WARNINGS=[]
+if pygame.mixer.get_init():
+    for key,filename in SFX_FILES.items():
+        try:SFX[key]=pygame.mixer.Sound(AUDIO/filename)
+        except (pygame.error,OSError) as exc:
+            AUDIO_WARNINGS.append(f"{filename}: {exc}")
+            print(f"Could not load sound {filename}: {exc}")
+    BILLIE_TRACK=AUDIO/"Billie_Holiday_Ill_Be_Seeing_You.wav"
+    if not BILLIE_TRACK.is_file():AUDIO_WARNINGS.append("Billie Holiday music file is missing.")
+else:
+    SFX={}
+    BILLIE_TRACK=None
+    AUDIO_WARNINGS.append("Pygame could not initialize audio.")
+def sound(n,volume=1.0):
+    snd=SFX.get(n)
+    if snd:
+        snd.set_volume(volume)
+        snd.play()
+def quit_check():
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT:pygame.quit();sys.exit()
+        if e.type==pygame.KEYDOWN and e.key==pygame.K_ESCAPE:pygame.quit();sys.exit()
+def text(txt,x,y,font=F,col=WHITE,center=False):
+    a=font.render(str(txt),True,col);r=a.get_rect()
+    if center:r.center=(x,y)
+    else:r.topleft=(x,y)
+    screen.blit(a,r);return r
+def wrap(txt,font,width):
+    out=[];line=""
+    for word in txt.split():
+        test=(line+" "+word).strip()
+        if font.size(test)[0]<=width:line=test
+        else:
+            if line:out.append(line)
+            if font.size(word)[0]<=width:line=word
+            else:
+                piece=""
+                for char in word:
+                    if piece and font.size(piece+char)[0]>width:
+                        out.append(piece);piece=char
+                    else:piece+=char
+                line=piece
+    if line:out.append(line)
+    return out
+def para(txt,x,y,width,font=F,col=WHITE,gap=6,limit=None):
+    lines=wrap(txt,font,width)
+    if limit:lines=lines[:limit]
+    for ln in lines:text(ln,x,y,font,col);y+=font.get_linesize()+gap
+def box(r,fill=PANEL,border=(75,145,164)):
+    pygame.draw.rect(screen,fill,r,border_radius=14);pygame.draw.rect(screen,border,r,2,border_radius=14)
+def sprite(img,xy,w):
+    if img:
+        h=max(1,int(w*img.get_height()/img.get_width()))
+        im=pygame.transform.smoothscale(img,(w,h));screen.blit(im,im.get_rect(center=xy))
+def photo_card(img,rect,caption,source):
+    box(rect,(5,12,25),(110,195,178))
+    inner=rect.inflate(-12,-38)
+    if img:
+        scale=min(inner.width/img.get_width(),inner.height/img.get_height())
+        size=(max(1,int(img.get_width()*scale)),max(1,int(img.get_height()*scale)))
+        photo=pygame.transform.smoothscale(img,size)
+        screen.blit(photo,photo.get_rect(center=(inner.centerx,inner.centery)))
+    text(caption,rect.centerx,rect.bottom-27,T,WHITE,True)
+    para("NASA/JPL photo • "+SOURCES[source],rect.x,rect.bottom+8,rect.width,T,CYAN,2,3)
+def amaya_sprite(center,height=105):
+    x,y=center;s=height/100
+    def point(dx,dy):return round(x+dx*s),round(y+dy*s)
+    def rect(dx,dy,w,h):
+        return pygame.Rect(round(x+dx*s),round(y+dy*s),max(1,round(w*s)),max(1,round(h*s)))
+    width=max(2,round(8*s))
+    pygame.draw.ellipse(screen,(30,22,22),rect(-25,40,50,9))
+    pygame.draw.rect(screen,(224,158,73),rect(16,-9,15,31),border_radius=max(2,round(4*s)))
+    pygame.draw.line(screen,(34,65,91),point(-7,17),point(-10,39),width+2)
+    pygame.draw.line(screen,(34,65,91),point(7,17),point(10,39),width+2)
+    pygame.draw.ellipse(screen,(31,39,54),rect(-18,36,19,9))
+    pygame.draw.ellipse(screen,(31,39,54),rect(1,36,19,9))
+    pygame.draw.line(screen,(94,176,194),point(-11,-7),point(-20,11),width)
+    pygame.draw.line(screen,(94,176,194),point(11,-7),point(20,11),width)
+    pygame.draw.ellipse(screen,(224,158,73),rect(-24,7,9,9))
+    pygame.draw.ellipse(screen,(224,158,73),rect(15,7,9,9))
+    pygame.draw.rect(screen,(78,145,174),rect(-15,-13,30,34),border_radius=max(3,round(7*s)))
+    pygame.draw.rect(screen,(218,225,222),rect(-6,-17,12,8),border_radius=max(2,round(3*s)))
+    pygame.draw.circle(screen,(255,205,105),point(0,0),max(2,round(4*s)))
+    pygame.draw.ellipse(screen,(70,43,35),rect(-18,-48,36,39))
+    pygame.draw.ellipse(screen,(201,145,112),rect(-13,-45,26,30))
+    pygame.draw.ellipse(screen,(70,43,35),rect(-17,-49,34,14))
+    pygame.draw.circle(screen,(39,34,32),point(-5,-33),max(1,round(2*s)))
+    pygame.draw.circle(screen,(39,34,32),point(5,-33),max(1,round(2*s)))
+    pygame.draw.arc(screen,(118,65,56),rect(-5,-31,10,7),0,math.pi,width=max(1,round(s)))
+def draw_robot(center,size=150,happy=False):
+    x,y=center;s=size/150
+    def point(dx,dy):return round(x+dx*s),round(y+dy*s)
+    def rect(dx,dy,w,h):
+        return pygame.Rect(round(x+dx*s),round(y+dy*s),max(1,round(w*s)),max(1,round(h*s)))
+    width=max(2,round(7*s))
+    pygame.draw.ellipse(screen,(30,22,22),rect(-43,62,86,12))
+    pygame.draw.line(screen,(61,81,141),point(0,-62),point(0,-76),width)
+    pygame.draw.circle(screen,GOLD,point(0,-79),max(4,round(7*s)))
+    pygame.draw.line(screen,(83,136,177),point(-28,3),point(-45,20),width)
+    pygame.draw.line(screen,(83,136,177),point(28,3),point(45,20),width)
+    pygame.draw.circle(screen,(255,105,95),point(-47,22),max(5,round(8*s)))
+    pygame.draw.circle(screen,(255,105,95),point(47,22),max(5,round(8*s)))
+    pygame.draw.rect(screen,(57,84,153),rect(-25,22,50,42),border_radius=max(3,round(8*s)))
+    pygame.draw.line(screen,(75,99,163),point(-10,61),point(-13,70),width)
+    pygame.draw.line(screen,(75,99,163),point(10,61),point(13,70),width)
+    pygame.draw.ellipse(screen,(255,204,108),rect(-19,66,15,8))
+    pygame.draw.ellipse(screen,(255,204,108),rect(4,66,15,8))
+    pygame.draw.rect(screen,(84,166,200),rect(-34,-52,68,70),border_radius=max(4,round(10*s)))
+    pygame.draw.rect(screen,(42,64,129),rect(-34,-52,68,70),width=max(2,round(3*s)),border_radius=max(4,round(10*s)))
+    pygame.draw.polygon(screen,(255,225,101),[point(-11,-53),point(0,-72),point(11,-53)])
+    pygame.draw.ellipse(screen,WHITE,rect(-24,-38,20,19))
+    pygame.draw.ellipse(screen,WHITE,rect(4,-38,20,19))
+    pygame.draw.circle(screen,(47,58,115),point(-14,-29),max(3,round(5*s)))
+    pygame.draw.circle(screen,(47,58,115),point(14,-29),max(3,round(5*s)))
+    if happy:
+        pygame.draw.rect(screen,(48,61,124),rect(-20,-12,40,22),border_radius=max(2,round(5*s)))
+        pygame.draw.arc(screen,(255,230,136),rect(-12,-10,24,16),0,math.pi,width=max(2,round(3*s)))
+        pygame.draw.circle(screen,(255,154,145),point(-25,-8),max(2,round(4*s)))
+        pygame.draw.circle(screen,(255,154,145),point(25,-8),max(2,round(4*s)))
+    else:
+        pygame.draw.rect(screen,(48,61,124),rect(-20,-10,40,18),border_radius=max(2,round(4*s)))
+        for i in range(5):
+            px=-13+i*6.5
+            pygame.draw.line(screen,(255,230,136),point(px,-7),point(px,5),max(1,round(2*s)))
+    pygame.draw.circle(screen,(255,204,108),point(0,15),max(3,round(5*s)))
+def draw_rocket(center,height=250):
+    x,y=center;s=height/250
+    def point(dx,dy):return round(x+dx*s),round(y+dy*s)
+    def poly(points,color):
+        pygame.draw.polygon(screen,color,[point(px,py) for px,py in points])
+    pygame.draw.ellipse(screen,(30,22,22),pygame.Rect(round(x-38*s),round(y+93*s),round(76*s),round(14*s)))
+    poly([(-13,55),(0,112),(13,55)],(255,123,54))
+    poly([(-7,55),(0,91),(7,55)],(255,217,96))
+    poly([(-28,38),(-55,67),(-27,62)],(226,76,80))
+    poly([(28,38),(55,67),(27,62)],(226,76,80))
+    pygame.draw.rect(screen,(218,227,232),pygame.Rect(round(x-28*s),round(y-60*s),round(56*s),round(112*s)),border_radius=max(3,round(16*s)))
+    poly([(-28,-58),(0,-110),(28,-58)],(232,83,82))
+    pygame.draw.circle(screen,(71,144,191),point(0,-30),max(7,round(13*s)))
+    pygame.draw.circle(screen,(245,250,250),point(0,-30),max(4,round(8*s)))
+    pygame.draw.line(screen,(131,148,160),point(-18,10),point(18,10),max(2,round(3*s)))
+    pygame.draw.line(screen,(131,148,160),point(-18,25),point(18,25),max(2,round(3*s)))
+def bg(t=0):
+    screen.fill((7,12,25));random.seed(5)
+    for i in range(100):
+        x=(i*139+20)%W;y=(i*83+15)%H
+        v=120+int(80*(.5+.5*math.sin(t*.001+i)))
+        pygame.draw.circle(screen,(v//2,v,min(255,v+20)),(x,y),1 if i%3 else 2)
+    pygame.draw.circle(screen,(115,48,40),(W//2,890),540)
+    pygame.draw.ellipse(screen,(154,68,46),(-120,575,780,260))
+    pygame.draw.ellipse(screen,(130,55,43),(430,610,850,220))
+def draw_stage(image):
+    if not image:
+        bg(pygame.time.get_ticks())
+        return
+    iw,ih=image.get_size()
+    scale=max(W/iw,H/ih)
+    size=(int(iw*scale),int(ih*scale))
+    scaled=pygame.transform.smoothscale(image,size)
+    screen.blit(scaled,scaled.get_rect(center=(W//2,H//2)))
+def wait():
+    while True:
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+            if e.type==pygame.KEYDOWN and e.key in (pygame.K_SPACE,pygame.K_RETURN):return
+        clock.tick(FPS)
+def dialogue(speaker,msg,hint="SPACE / ENTER"):
+    r=pygame.Rect(30,H-177,W-60,145);box(r,(5,12,25),(85,165,183))
+    text(speaker.upper(),r.x+20,r.y+13,S,GOLD)
+    para(msg,r.x+20,r.y+43,r.width-40,F,WHITE,4,2)
+    text(hint,r.right-190,r.bottom-26,S,CYAN)
+def help_screen():
+    while True:
+        screen.fill(DARK);text("HOW TO PLAY",45,35,B,GOLD)
+        lines=[
+            "A/D or LEFT/RIGHT: move or select",
+            "SPACE: interact, collect, confirm",
+            "Pathfinder: use SPACE/UP to jump over rocks",
+            "Phoenix: move the robotic-arm scoop with WASD or arrows",
+            "Podcast: P pause, M mute, +/- volume, S stop music",
+            "Mission map: click the twin-sun marker to scan for a hidden relic",
+            "H during a mission: Ingenuity archived guide",
+            "Random NASA fact cards appear; facts do not repeat until the deck is exhausted.",
+            "Each mission awards an archive fragment, not a physical rover part.",
+            "Mars map positions are schematic and NOT to geographic scale.",
+            "Ingenuity appears as a recorded guide because its mission ended in 2024.",
+            "ESC: quit"
+        ]
+        y=145
+        for ln in lines:text("• "+ln,65,y,F,WHITE);y+=43
+        text("ENTER to return",W//2,690,S,CYAN,True);pygame.display.flip()
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+            if e.type==pygame.KEYDOWN and e.key in (pygame.K_RETURN,pygame.K_ESCAPE):return
+        clock.tick(FPS)
+def sources_screen():
+    while True:
+        screen.fill(DARK);text("SOURCES & CREDITS",40,25,B,GOLD)
+        labels=[("Viking",SOURCES["Viking"]),("Pathfinder / Sojourner",SOURCES["Sojourner"]),
+        ("Spirit & Opportunity",SOURCES["Spirit & Opportunity"]),("Opportunity",SOURCES["Opportunity"]),
+        ("Phoenix",SOURCES["Phoenix"]),("InSight",SOURCES["InSight"]),("Ingenuity",SOURCES["Ingenuity"]),
+        ("Ingenuity investigation",SOURCES["Ingenuity investigation"]),("Opportunity last message",SOURCES["Opportunity last message"]),
+        ("Phoenix lander photo",SOURCES["Phoenix lander photo"]),("Sojourner photo",SOURCES["Sojourner photo"]),
+        ("Viking lander photo",SOURCES["Viking lander photo"]),("Spirit rover image",SOURCES["Spirit rover image"]),
+        ("Opportunity panorama",SOURCES["Opportunity panorama"]),("InSight first image",SOURCES["InSight first image"]),
+        ("Ingenuity landing graphic",SOURCES["Ingenuity landing graphic"])]
+        for i,(name,url) in enumerate(labels):
+            column=i//6;row=i%6;x=45+column*380;y=78+row*67
+            text(name,x,y,S,WHITE);para(url,x,y+22,355,T,CYAN,1,3)
+        text("John Callas interview: NASA JPL On a Mission, Season 4, Episode 4",45,505,S,GOLD)
+        para(SOURCES["John Callas interview"],45,532,1080,T,CYAN,2,2)
+        text("Art/SFX: supplied NASA2026.sb3 assets • Music: supplied NASA2026_Python track.",45,700,T,MUTED)
+        pygame.display.flip()
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+            if e.type==pygame.KEYDOWN and e.key in (pygame.K_RETURN,pygame.K_ESCAPE):return
+        clock.tick(FPS)
+def title():
+    sound("Space_Ripple.wav")
+    while True:
+        draw_stage(ARTS["stars"])
+        pygame.draw.circle(screen,(190,79,50),(W//2,290),150)
+        pygame.draw.ellipse(screen,(65,34,33),(W//2-370,420,740,85))
+        draw_robot((W//2-300,425),135)
+        text("SPACE QUEST I",W//2,85,B,WHITE,True)
+        text("ENDEAVOUR FOR OPPORTUNITY",W//2,150,M,GOLD,True)
+        text("A 2D MARS RECOVERY ADVENTURE",W//2,195,S,PALE,True)
+        text("Explore NASA's pioneering Mars missions and discoveries.",W//2,550,F,WHITE,True)
+        text("ENTER START     H HOW TO PLAY     C SOURCES",W//2,640,S,CYAN,True)
+        if AUDIO_WARNINGS:text("AUDIO WARNING: check the game console for missing sounds.",W//2,690,S,RED,True)
+        pygame.display.flip()
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+            if e.type==pygame.KEYDOWN:
+                if e.key==pygame.K_RETURN:return
+                if e.key==pygame.K_h:help_screen()
+                if e.key==pygame.K_c:sources_screen()
+        clock.tick(FPS)
+def opening_animation():
+    cards=[
+        ("VIKING","Viking 1 was planned for 90 days and operated for more than six years.","viking_photo","Viking lander photo","Viking"),
+        ("SOJOURNER","Sojourner drove about 100 metres across the Martian surface.","sojourner_photo","Sojourner photo","Sojourner"),
+        ("SPIRIT","Spirit drove about 7.7 kilometres before becoming stuck in soft soil.","spirit_photo","Spirit rover image","Spirit & Opportunity"),
+        ("PHOENIX","Phoenix's robotic arm was nearly 2.5 metres long.","phoenix_photo","Phoenix lander photo","Phoenix"),
+        ("INSIGHT","InSight recorded more than 1,300 marsquakes.","insight_photo","InSight first image","InSight"),
+        ("INGENUITY","Ingenuity was designed for five flights and completed 72.","ingenuity_photo","Ingenuity landing graphic","Ingenuity")
+    ]
+    start=pygame.time.get_ticks();duration=len(cards)*1.8;launch_sound=False
+    sound("Space_Ripple.wav",0.5)
+    while True:
+        elapsed=(pygame.time.get_ticks()-start)/1000
+        if elapsed>=duration:return
+        index=min(len(cards)-1,int(elapsed//1.8))
+        phase=(elapsed%1.8)/1.8
+        name,fact,image_key,photo_source,data_source=cards[index]
+        draw_stage(ARTS["stars"])
+        pygame.draw.circle(screen,(149,58,47),(W//2,655),280)
+        pygame.draw.ellipse(screen,(69,34,32),(-100,600,850,210))
+        pygame.draw.ellipse(screen,(103,47,39),(430,620,930,200))
+        for i in range(18):
+            x=int(35+i*31+phase*110)%W
+            y=560+int(14*math.sin(elapsed*3+i))
+            pygame.draw.circle(screen,(195,155,113),(x,y),2)
+        rocket_x=int(80+phase*475)
+        rocket_y=int(555-28*math.sin(phase*math.pi))
+        draw_rocket((rocket_x,rocket_y),125)
+        if index>=1 and not launch_sound:
+            sound("Laser2.wav",0.35);launch_sound=True
+        panel=pygame.Rect(45,115,570,430);box(panel,(5,12,25),(85,165,183))
+        text("SEVEN MISSIONS • ONE PLANET",panel.centerx,155,M,GOLD,True)
+        text(name,W//2-270,220,B,WHITE,True)
+        para(fact,85,290,490,F,PALE,10,5)
+        text("NASA DATA SOURCE",85,430,S,CYAN)
+        para(SOURCES[data_source],85,455,490,T,PALE,2,2)
+        text(f"MISSION {index+1} / {len(cards)}",85,515,T,GOLD)
+        photo_card(ARTS[image_key],pygame.Rect(660,180,470,330),name+" • NASA MARS ARCHIVE",photo_source)
+        text("X / SPACE / ENTER TO SKIP OPENING",W//2,715,S,CYAN,True)
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type==pygame.QUIT:pygame.quit();sys.exit()
+            if event.type==pygame.KEYDOWN and event.key in (pygame.K_x,pygame.K_SPACE,pygame.K_RETURN):return
+        clock.tick(FPS)
+def intro():
+    pages=[("MISSION CONTROL","The Mars recovery archive has one unfinished file: Opportunity. Its last signal arrived during a planet-wide dust storm in 2018."),
+    ("ROBOT GUIDE","Visit the silent machines and recover their archives. Follow the history of Mars exploration."),
+    ("MISSION CONTROL","The recovered fragments are records and clues, not physical rover parts. Your final destination is Opportunity's last resting place."),
+    ("INGENUITY ARCHIVE","I am a stored flight-log guide, not an active helicopter. My mission ended in 2024 after rotor damage. Call up my recorded hints if you need help.")]
+    for who,msg in pages:
+        bg(pygame.time.get_ticks());draw_robot((160,390),185);dialogue(who,msg);pygame.display.flip();wait()
+def backstory_page(msg,character,background):
+    draw_stage(background)
+    if character=="robot":draw_robot((W//2,305),210)
+    elif character=="amaya":amaya_sprite((W//2,305),120)
+    else:sprite(ARTS[character],(W//2,305),250)
+    panel=pygame.Rect(45,435,1090,250);box(panel,(5,12,25),(85,165,183))
+    text("AMAYA'S STORY",75,458,M,GOLD)
+    para(msg,75,510,1030,STORY,WHITE,5,4)
+    text("SPACE / ENTER TO CONTINUE",W//2,660,S,CYAN,True)
+    pygame.display.flip();wait()
+def backstory_credits():
+    pages=[
+        ("MEET AMAYA",
+         "Amaya is a small robot built to explore and learn. At night, she climbs to a ridge with her little telescope and watches the stars. She reads every space update, saves every Mars picture, and writes questions in her notebook."),
+        ("HER HERO: OPPORTUNITY",
+         "More than any other mission, Amaya follows Opportunity. She knows about the rover's long trek, its panoramic images, and its rock studies. To Amaya, Opportunity is brave: a distant robot that kept exploring long after anyone expected."),
+        ("THE SILENCE",
+         "When the planet-wide dust storm darkened Mars and Opportunity stopped sending messages, Amaya checked every update. One day became many. Her usual happy beeps turned quiet; she felt deeply sad and worried her hero might be gone."),
+        ("A MAP AND A PROMISE",
+         "Amaya's SI friend sat with her and made a map of Mars, marking Viking, Pathfinder and Sojourner, Spirit, Phoenix, InSight, Ingenuity—and at last Opportunity. Each mission left clues and equipment records. Amaya decides to follow them all, learn how they worked, and carry her hero's story forward.")
+    ]
+    page=0
+    while True:
+        draw_stage(ARTS["stars"])
+        pygame.draw.circle(screen,(180,74,55),(W//2,390),210)
+        pygame.draw.ellipse(screen,(60,35,34),(W//2-410,540,820,85))
+        draw_robot((160,430),165)
+        if page==1:
+            photo_card(ARTS["opportunity_photo"],pygame.Rect(45,125,230,165),
+                       "OPPORTUNITY • PIA18595","Opportunity panorama")
+        panel=pygame.Rect(305,170,830,430);box(panel,(5,12,25),(85,165,183))
+        text("AMAYA'S BACKSTORY",W//2,65,B,GOLD,True)
+        text(pages[page][0],panel.centerx,220,M,CYAN,True)
+        para(pages[page][1],panel.x+38,275,panel.width-76,F,WHITE,11,8)
+        text(f"PAGE {page+1} / {len(pages)}",panel.centerx,530,S,GOLD,True)
+        if page<len(pages)-1:
+            text("SPACE / ENTER: NEXT • LEFT: PREVIOUS • X: SKIP STORY",W//2,680,S,CYAN,True)
+        else:
+            text("SPACE / ENTER: BEGIN PODCAST • LEFT: PREVIOUS • X: SKIP STORY",W//2,680,S,CYAN,True)
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type==pygame.QUIT:pygame.quit();sys.exit()
+            if event.type==pygame.KEYDOWN:
+                if event.key in (pygame.K_SPACE,pygame.K_RETURN):
+                    if page==len(pages)-1:return
+                    page+=1
+                elif event.key in (pygame.K_LEFT,pygame.K_BACKSPACE):
+                    page=max(0,page-1)
+                elif event.key==pygame.K_x:return
+        clock.tick(FPS)
+def prelude():
+    backstory_credits()
+def mars_map_intro():
+    image=ARTS["mars_map"]
+    draw_stage(image)
+    text("AMAYA'S MARS EXPEDITION MAP",W//2,45,M,GOLD,True)
+    dialogue("AMAYA","My SI friend helped me make this map. Let's explore the mission sites and follow the clues to Opportunity.")
+    pygame.display.flip();wait()
+def callas_feature():
+    music_available=bool(BILLIE_TRACK and pygame.mixer.get_init())
+    music_paused=False;music_muted=False;music_volume=0.45
+    if music_available:
+        try:
+            pygame.mixer.music.load(str(BILLIE_TRACK))
+            pygame.mixer.music.set_volume(music_volume)
+            pygame.mixer.music.play()
+        except (pygame.error,OSError) as exc:
+            AUDIO_WARNINGS.append(f"Billie Holiday track: {exc}")
+            print(f"Could not play Billie Holiday track: {exc}")
+            music_available=False
+    else:
+        AUDIO_WARNINGS.append("Billie Holiday music is unavailable during the podcast.")
+        print("Billie Holiday music is unavailable during the podcast.")
+    transcript=[
+        ("JOHN CALLAS","The last information we got from the rover was: “Batteries were low. It’s getting dark, and it’s cold.” And the skies just darkened so quickly and so deeply over the rover, that the rover shut down. There was zero light at the surface of Mars, and the rover was in complete darkness. And we had to wait, and we waited for eight months, constantly listening every day, sending a command. “Are you there? If you’re there, say hello.” But we never heard from Opportunity again."),
+        ("WIND CUE","(sound of wind)"),
+        ("NARRATOR • 50:01","After nearly 15 Earth-years exploring Mars, or 5,111 sols, Opportunity’s mission was declared over on February 12, 2019."),
+        ("MISSION CONTROL / JOHN CALLAS","I wanted to say that, with the completion of tonight’s commanding, this concludes operations for MER-1, spacecraft ID 253…"),
+        ("ABIGAIL FRAEMAN","You know, the mission had been such a part of my life. And so, on the one hand, it was pretty sad to have that gone, and no longer knowing that, no matter what was going on, Opportunity was still exploring Mars. But, of course, on the other hand, like, “Oh my goodness, the mission was supposed to last for three months, and it had lasted from the time when I was a high school student all the way through getting my Ph.D. and getting hired at NASA and then getting to work on it. That’s incredible.”"),
+        ("NARRATOR","As the team said good-bye to Opportunity, the song, “I’ll be seeing you,” played in Mission Control.")
+    ]
+    credits=[]
+    for speaker,paragraph in transcript:
+        credits.append(("speaker",speaker))
+        if speaker=="WIND CUE":
+            credits.append(("cue",paragraph))
+        else:
+            credits.extend(("text",line) for line in wrap(paragraph,CREDITS,1000))
+        credits.append(("gap",""))
+    line_height=52
+    scroll=H+35-180
+    last=pygame.time.get_ticks();wind_played=False
+    credits_end=H+35+(len(credits)-1)*line_height-H//2
+    while scroll<credits_end or (music_available and (music_paused or pygame.mixer.music.get_busy())):
+        now=pygame.time.get_ticks();dt=min((now-last)/1000,0.05);last=now
+        if scroll<credits_end:scroll=min(credits_end,scroll+62*dt)
+        draw_stage(ARTS["opportunity_photo"])
+        shade=pygame.Surface((W,H),pygame.SRCALPHA);shade.fill((3,8,20,205));screen.blit(shade,(0,0))
+        text("PODCAST TRANSCRIPT",W//2,48,B,GOLD,True)
+        text("JOHN CALLAS • ABIGAIL FRAEMAN • NASA/JPL",W//2,100,S,CYAN,True)
+        for i,(kind,line) in enumerate(credits):
+            y=int(H+35+i*line_height-scroll)
+            if 130<y<H-100:
+                if kind=="speaker":text(line,W//2,y,CREDITS,GOLD,True)
+                elif kind=="cue":text(line,W//2,y,CREDITS,CYAN,True)
+                elif kind=="text":text(line,W//2,y,CREDITS,WHITE,True)
+            if kind=="cue" and not wind_played and y<=H//2:
+                sound("Marsaudio.wav",0.25);wind_played=True
+        text("Opportunity panorama: NASA/JPL-Caltech • PIA18595",W//2,635,T,PALE,True)
+        text("♪ BILLIE HOLIDAY — I'LL BE SEEING YOU",W//2,660,S,GOLD,True)
+        music_state="PAUSED" if music_paused else "PLAYING" if music_available and pygame.mixer.music.get_busy() else "UNAVAILABLE"
+        if music_available and music_muted:music_state="MUTED"
+        text(f"MUSIC {music_state} • P PAUSE • M MUTE • +/- VOLUME • S SKIP SONG",W//2,690,S,CYAN,True)
+        text("X: SKIP CREDITS (SONG CONTINUES) • THE TRANSCRIPT WILL ROLL AUTOMATICALLY",W//2,722,T,PALE,True)
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type==pygame.QUIT:pygame.quit();sys.exit()
+            if event.type==pygame.KEYDOWN:
+                if event.key==pygame.K_x:
+                    scroll=credits_end
+                elif event.key==pygame.K_p and music_available:
+                    if music_paused:pygame.mixer.music.unpause()
+                    else:pygame.mixer.music.pause()
+                    music_paused=not music_paused
+                elif event.key==pygame.K_m and music_available:
+                    music_muted=not music_muted
+                    pygame.mixer.music.set_volume(0 if music_muted else music_volume)
+                elif event.key in (pygame.K_PLUS,pygame.K_EQUALS,pygame.K_KP_PLUS) and music_available:
+                    music_volume=min(1.0,music_volume+0.1)
+                    if not music_muted:pygame.mixer.music.set_volume(music_volume)
+                elif event.key in (pygame.K_MINUS,pygame.K_KP_MINUS) and music_available:
+                    music_volume=max(0.0,music_volume-0.1)
+                    if not music_muted:pygame.mixer.music.set_volume(music_volume)
+                elif event.key==pygame.K_s and music_available:
+                    pygame.mixer.music.stop()
+                    music_available=False
+        clock.tick(FPS)
+    if pygame.mixer.get_init():pygame.mixer.music.stop()
+def fact_popup(seen):
+    deck=[f for f in FACTS if f[1] not in seen]
+    if not deck:seen.clear();deck=FACTS[:]
+    f=random.choice(deck);seen.add(f[1])
+    while True:
+        quit_check()
+        overlay=pygame.Surface((W,H),pygame.SRCALPHA);overlay.fill((0,0,0,180));screen.blit(overlay,(0,0))
+        r=pygame.Rect(160,145,860,470);box(r,(6,17,32),(255,197,94))
+        text("UNEXPECTED TRANSMISSION // NEW MARS FACT",W//2,185,M,GOLD,True)
+        para(f[1],205,250,770,F,WHITE,8,4)
+        text("NASA source: "+f[2],205,405,S,CYAN)
+        para(SOURCES[f[2]],205,435,770,T,PALE,2,3)
+        text("SPACE / ENTER to close",W//2,570,S,GOLD,True)
+        pygame.display.flip()
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+            if e.type==pygame.KEYDOWN and e.key in (pygame.K_SPACE,pygame.K_RETURN):return
+        clock.tick(FPS)
+def guide(m):
+    bg();r=pygame.Rect(335,175,790,380);box(r)
+    text("INGENUITY ARCHIVE // HELP",370,210,M,CYAN)
+    hints={
+    "camera":"Activate the three switches in order: Viking 1, Viking 2, then the first surface image.",
+    "drive":"Move with A/D and jump with SPACE or UP to clear rocks. Three battery hits end the run; reach the Sojourner data drive.",
+    "wheel":"Press SPACE when the moving marker is inside the green repair zone. Do this three times.",
+    "ice":"Move the robotic-arm scoop with WASD or arrows. Collect 3 bright ice samples and avoid dark dust.",
+    "quake":"Press SPACE when the signal crosses the centre band. Match three pulses.",
+    "rotor":"Rotate the rotor with LEFT/RIGHT and confirm when the blades align.",
+    "storm":"Keep moving and collect three energy reserves before the storm drains the rover's battery."}
+    para(hints[m["task"]],375,280,700,F,WHITE,8,5)
+    text("SPACE / ENTER to return",375,485,S,GOLD);pygame.display.flip();wait()
+def header(m):
+    bg(pygame.time.get_ticks());text(m["name"].upper(),30,22,M,GOLD);text(m["tag"],34,62,S,CYAN)
+    r=pygame.Rect(28,100,W-56,100);box(r,(7,15,29))
+    para(m["brief"],50,123,W-100,F,WHITE,5,2)
+def briefing(m):
+    photo_sources={
+        "viking":("viking_photo","Viking 2's first Mars surface image","Viking lander photo"),
+        "sojourner":("sojourner_photo","Sojourner beside a rock","Sojourner photo"),
+        "spirit":("spirit_photo","Spirit and its lander (NASA visualization)","Spirit rover image"),
+        "phoenix":("phoenix_photo","Phoenix photographed on Mars","Phoenix lander photo"),
+        "insight":("insight_photo","InSight's first image from Mars","InSight first image"),
+        "ingenuity":("ingenuity_photo","NASA graphic: Ingenuity's final landing","Ingenuity landing graphic"),
+        "opportunity":("opportunity_photo","Panorama captured by Opportunity","Opportunity panorama")
+    }
+    mission_sounds={
+        "viking":"Computer_Beep.wav","sojourner":"Laser1.wav",
+        "spirit":"Buzz_Whir.wav","phoenix":"Collect.wav",
+        "insight":"Space_Ripple.wav","ingenuity":"Laser2.wav",
+        "opportunity":"Marsaudio.wav"
+    }
+    sound(mission_sounds[m["id"]],0.35)
+    while True:
+        header(m)
+        image_key,caption,source=photo_sources[m["id"]]
+        photo_card(ARTS[image_key],pygame.Rect(35,275,205,170),caption,source)
+        text("Mission sound cue (game audio)",40,510,T,PALE)
+        r=pygame.Rect(270,245,850,355);box(r)
+        text(m["machine"]+" // "+m["year"],300,270,S,GOLD)
+        para(m["detail"],300,315,780,F,WHITE,6,4)
+        text("ENGINEERING NOTE",300,455,S,CYAN);para(m["lesson"],300,485,780,S,PALE,4,3)
+        text("ENTER START MISSION     H INGenuity GUIDE",W//2,690,S,GOLD,True)
+        pygame.display.flip()
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+            if e.type==pygame.KEYDOWN:
+                if e.key in (pygame.K_RETURN,pygame.K_SPACE):return
+                if e.key==pygame.K_h:guide(m)
+        clock.tick(FPS)
+def space_easter_egg():
+    sound("Space_Ripple.wav",0.45)
+    remaining=[egg for egg in GALACTIC_EGGS if egg[0] not in FOUND_GALACTIC_EGGS]
+    if not remaining:return
+    egg_id,egg_name=random.choice(remaining);found=False
+    while True:
+        collect_rect=None
+        draw_stage(ARTS["stars"])
+        if egg_id=="twin_suns":
+            pygame.draw.circle(screen,(255,192,90),(W//2-130,300),78)
+            pygame.draw.circle(screen,(255,225,135),(W//2+130,300),52)
+            pygame.draw.circle(screen,(255,240,185),(W//2-130,300),55)
+            pygame.draw.circle(screen,(255,249,210),(W//2+130,300),34)
+            target=(W//2-65,300);collect_radius=160
+        elif egg_id=="training_remote":
+            target=(W//2,360)
+            collect_radius=100
+            pygame.draw.circle(screen,(97,129,160),target,58)
+            pygame.draw.circle(screen,(205,223,236),target,45,5)
+            pygame.draw.circle(screen,(30,43,61),target,17)
+            pygame.draw.circle(screen,(255,102,92),(target[0]-5,target[1]-4),6)
+            pygame.draw.circle(screen,(255,102,92),(target[0]+5,target[1]+4),6)
+            for dx,dy in ((-82,-64),(83,-46),(-79,72),(74,79)):
+                pygame.draw.circle(screen,CYAN,(target[0]+dx,target[1]+dy),5)
+        elif egg_id=="asteroid_patrol":
+            target=(W//2,385)
+            collect_radius=100
+            for x,y,radius in ((250,280,42),(390,430,31),(565,275,37),(755,420,48),
+                               (900,275,30),(1030,420,39),(360,210,19),(825,230,20)):
+                pygame.draw.circle(screen,(104,91,87),(x,y),radius)
+                pygame.draw.circle(screen,(163,138,121),(x,y),radius,2)
+                pygame.draw.circle(screen,(57,51,55),(x-radius//3,y-radius//4),max(3,radius//7))
+            draw_rocket((W//2,385),115)
+        elif egg_id=="energy_blade":
+            target=(W//2,335)
+            collect_radius=100
+            pygame.draw.polygon(screen,(75,80,106),[(target[0]-75,505),(target[0]+75,505),(target[0]+30,235),(target[0]-30,235)])
+            pygame.draw.line(screen,(80,222,255),(target[0],250),(target[0],440),22)
+            pygame.draw.line(screen,(226,250,255),(target[0],250),(target[0],440),6)
+            pygame.draw.rect(screen,(177,190,195),(target[0]-15,435,30,80),border_radius=7)
+            pygame.draw.rect(screen,(75,85,96),(target[0]-23,465,46,13),border_radius=4)
+            for y in range(450,510,13):
+                pygame.draw.line(screen,(255,205,105),(target[0]-12,y),(target[0]+12,y),3)
+            text("AN OLD TEMPLE RELIC",W//2,555,F,CYAN,True)
+        elif egg_id=="blue_milk":
+            target=(W//2,365)
+            collect_radius=100
+            pygame.draw.rect(screen,(93,75,64),(target[0]-120,300,240,150),border_radius=14)
+            pygame.draw.rect(screen,(173,139,92),(target[0]-120,300,240,150),4,border_radius=14)
+            pygame.draw.line(screen,(173,139,92),(target[0]-120,375),(target[0]+120,375),4)
+            pygame.draw.line(screen,(173,139,92),(target[0],300),(target[0],450),4)
+            pygame.draw.rect(screen,(63,157,196),(target[0]-32,325,64,92),border_radius=15)
+            pygame.draw.rect(screen,(194,223,227),(target[0]-34,325,68,17),border_radius=5)
+            pygame.draw.rect(screen,(49,112,151),(target[0]-28,371,56,39),border_radius=9)
+            text("COLD STORAGE: BLUE MILK",W//2,485,F,CYAN,True)
+        else:
+            target=(W//2-95,375)
+            collect_radius=205
+            collect_rect=pygame.Rect(340,245,490,300)
+            photo_card(ARTS["opportunity_photo"],collect_rect,
+                       "OPPORTUNITY • REAL MARS PANORAMA","Opportunity panorama")
+            amaya_sprite((850,420),125)
+            text("AMAYA'S SCRAPBOOK",850,510,S,GOLD,True)
+        if egg_id not in ("asteroid_patrol","energy_blade","blue_milk"):
+            pygame.draw.ellipse(screen,(91,50,42),(230,475,720,70))
+            draw_robot((W//2,465),125)
+        elif egg_id in ("energy_blade","blue_milk"):
+            pygame.draw.ellipse(screen,(91,50,42),(90,475,440,70))
+            draw_robot((260,465),125)
+        panel=pygame.Rect(115,80,950,125);box(panel,(5,12,25),(85,165,183))
+        text("RANDOM GALACTIC EASTER EGG",W//2,112,M,GOLD,True)
+        text(egg_name.upper(),W//2,162,S,WHITE,True)
+        if found:
+            text(f"RELIC RECOVERED • {len(FOUND_GALACTIC_EGGS)}/{len(GALACTIC_EGGS)}",W//2,590,F,GREEN,True)
+            if egg_id=="opportunity_postcard":
+                text("AMAYA: “Every little explorer can make the next journey brighter.”",
+                     W//2,620,S,WHITE,True)
+            text("SPACE / ENTER TO RETURN",W//2,635,S,CYAN,True)
+        else:
+            text("CLICK THE PICTURE TO SCAN AND COLLECT THIS RELIC",W//2,590,S,GOLD,True)
+            text("SPACE / ENTER TO LEAVE IT FOR LATER",W//2,635,S,CYAN,True)
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type==pygame.QUIT:pygame.quit();sys.exit()
+            if event.type==pygame.KEYDOWN and event.key in (pygame.K_SPACE,pygame.K_RETURN) and found:return
+            if event.type==pygame.MOUSEBUTTONDOWN and event.button==1:
+                clicked=collect_rect.collidepoint(event.pos) if collect_rect else math.dist(event.pos,target)<collect_radius
+                if clicked and not found:
+                    FOUND_GALACTIC_EGGS.add(egg_id);found=True;sound("Collect.wav",0.7)
+        clock.tick(FPS)
+def mission_map(done):
+    sel=0
+    while True:
+        bg(pygame.time.get_ticks());r=pygame.Rect(55,70,1070,590);box(r,(12,20,33),(100,140,158))
+        pygame.draw.ellipse(screen,(145,66,50),(155,125,870,465))
+        pygame.draw.ellipse(screen,(176,86,58),(190,160,800,390),3)
+        text("MARS MISSION ARCHIVE",W//2,38,M,GOLD,True)
+        for i,m in enumerate(MISSIONS):
+            x=55+int(m["pos"][0]*1070);y=70+int(m["pos"][1]*590)
+            c=GREEN if m["id"] in done else GOLD
+            pygame.draw.circle(screen,(20,30,44),(x,y),18);pygame.draw.circle(screen,c,(x,y),12,3)
+            text(str(i+1),x,y,S,WHITE,True);text(m["name"],x+18,y-10,T,WHITE)
+            if i==sel:pygame.draw.circle(screen,WHITE,(x,y),23,2)
+        egg_pos=(1065,125)
+        if len(FOUND_GALACTIC_EGGS)<len(GALACTIC_EGGS):
+            pygame.draw.circle(screen,(255,184,76),(egg_pos[0]-9,egg_pos[1]),12)
+            pygame.draw.circle(screen,(255,225,135),(egg_pos[0]+9,egg_pos[1]),9)
+            pygame.draw.circle(screen,(255,246,194),(egg_pos[0]-9,egg_pos[1]),7)
+            pygame.draw.circle(screen,(255,250,216),(egg_pos[0]+9,egg_pos[1]),5)
+            text("?",egg_pos[0],egg_pos[1]+30,T,GOLD,True)
+        else:
+            text(f"ALL RELICS FOUND {len(FOUND_GALACTIC_EGGS)}/{len(GALACTIC_EGGS)}",1060,125,T,GREEN,True)
+        if len(FOUND_GALACTIC_EGGS)<len(GALACTIC_EGGS):
+            text(f"RELICS {len(FOUND_GALACTIC_EGGS)}/{len(GALACTIC_EGGS)}",1065,170,T,GOLD,True)
+        text("Schematic positions • NOT to geographic scale",W//2,682,S,PALE,True)
+        text("UP/DOWN or 1–7 select • ENTER launch • Click twin suns to scan a hidden relic",W//2,718,T,CYAN,True)
+        text("SELECTED: "+MISSIONS[sel]["name"]+"  "+MISSIONS[sel]["year"],W//2,650,F,WHITE,True)
+        pygame.display.flip()
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+            if e.type==pygame.MOUSEBUTTONDOWN and e.button==1 and len(FOUND_GALACTIC_EGGS)<len(GALACTIC_EGGS):
+                if math.dist(e.pos,egg_pos)<28:
+                    space_easter_egg()
+                    break
+            if e.type==pygame.KEYDOWN:
+                if e.key in (pygame.K_DOWN,pygame.K_RIGHT):sel=(sel+1)%7
+                if e.key in (pygame.K_UP,pygame.K_LEFT):sel=(sel-1)%7
+                if pygame.K_1<=e.key<=pygame.K_7:sel=e.key-pygame.K_1
+                if e.key==pygame.K_RETURN:
+                    if sel==6 and len(done)<6:
+                        message("OPPORTUNITY FILE LOCKED","Recover the six earlier mission archives first.")
+                    else:return sel
+        clock.tick(FPS)
+def message(title,msg,source=None):
+    bg();r=pygame.Rect(130,155,920,470);box(r)
+    text(title,W//2,190,M,GOLD,True);para(msg,180,250,820,F,WHITE,7,4)
+    if source:
+        text("NASA SOURCE: "+source,180,410,S,CYAN)
+        para(SOURCES[source],180,440,820,T,PALE,2,3)
+    text("SPACE / ENTER",W//2,570,S,GOLD,True);pygame.display.flip();wait()
+def clue(m,i):
+    bg();r=pygame.Rect(120,180,940,390);box(r,(7,17,31),(110,195,178))
+    text("ARCHIVE FRAGMENT RECOVERED",W//2,235,M,GREEN,True)
+    text(CLUE_NAMES[i].upper(),W//2,300,M,GOLD,True)
+    para(m["clue"],200,360,780,F,WHITE,8,3)
+    text("Evidence record, not a physical part removed from a rover.",W//2,485,S,PALE,True)
+    text("SPACE / ENTER",W//2,525,S,CYAN,True);pygame.display.flip();wait()
+def camera_task():
+    labels=["VIKING 1 LANDING","VIKING 2 LANDING","FIRST SURFACE IMAGE"];done=0;sel=0
+    while done<3:
+        header(MISSIONS[0]);text("RESTORE CAMERA RELAY",W//2,280,M,WHITE,True)
+        for i,l in enumerate(labels):
+            r=pygame.Rect(145+i*300,370,270,100);box(r,(20,65,78) if sel==i else (15,29,43),CYAN if sel==i else MUTED)
+            text(l,r.centerx,r.centery,S,WHITE,True);text("RESTORED" if i<done else "LOCKED",r.centerx,r.bottom+18,T,GREEN if i<done else MUTED,True)
+        text("LEFT/RIGHT select • SPACE activate in correct order",W//2,570,S,GOLD,True);pygame.display.flip()
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+            if e.type==pygame.KEYDOWN:
+                if e.key in (pygame.K_LEFT,pygame.K_a):sel=max(0,sel-1)
+                if e.key in (pygame.K_RIGHT,pygame.K_d):sel=min(2,sel+1)
+                if e.key==pygame.K_SPACE:
+                    if sel==done:
+                        done+=1
+                        sound("Laser1.wav" if done==1 else "Computer_Beep.wav")
+                        if done==3:sound("Laser2.wav")
+                    else:sound("Buzz_Whir.wav")
+        clock.tick(FPS)
+    return True
+def drive_task():
+    x=100;drive=1090;ground_y=525;jump=0.0;velocity=0.0;battery=3;hit_cooldown=0
+    rocks=[pygame.Rect(rx,ground_y-28,rw,28) for rx,rw in ((320,42),(520,48),(735,40),(925,46))]
+    while battery>0:
+        dt=min(clock.tick(FPS)/1000,0.05)
+        header(MISSIONS[1]);pygame.draw.line(screen,(80,47,39),(35,ground_y),(1140,ground_y),5)
+        for rock in rocks:
+            pygame.draw.ellipse(screen,(143,105,82),rock)
+            pygame.draw.ellipse(screen,(199,157,120),rock.inflate(-12,-12))
+        pygame.draw.circle(screen,GOLD,(drive,ground_y-28),18,3)
+        text("SOJOURNER DATA DRIVE",drive-80,ground_y-68,T,GOLD)
+        rover_y=ground_y-34-jump
+        draw_robot((round(x),round(rover_y)),68)
+        text(f"BATTERY {battery}/3",65,270,M,GOLD)
+        text("A/D or arrows: move • SPACE/UP: jump over rocks • SPACE at the data drive",W//2,620,S,WHITE,True)
+        pygame.display.flip()
+        keys=pygame.key.get_pressed()
+        direction=int(keys[pygame.K_RIGHT] or keys[pygame.K_d])-int(keys[pygame.K_LEFT] or keys[pygame.K_a])
+        x=max(60,min(W-45,x+direction*230*dt))
+        if jump==0 and velocity==0 and (keys[pygame.K_UP] or keys[pygame.K_w]):
+            velocity=500
+        jump=max(0.0,jump+velocity*dt)
+        if jump==0:velocity=0
+        else:velocity-=1250*dt
+        player=pygame.Rect(round(x-20),round(ground_y-58-jump),40,46)
+        if hit_cooldown>0:hit_cooldown-=1
+        if hit_cooldown==0 and jump<35 and any(player.colliderect(rock) for rock in rocks):
+            battery-=1;x=max(80,x-85);hit_cooldown=50;sound("Buzz_Whir.wav")
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+            if e.type==pygame.KEYDOWN and e.key==pygame.K_SPACE:
+                if drive-x<70:sound("Collect.wav");return True
+                if jump==0 and velocity==0:velocity=500
+    message("PATHFINDER RUN ENDED","The robot ran out of battery. Jump over the rocks and reach the glowing Sojourner data drive.")
+    return False
+def wheel_task():
+    n=0;pos=0;d=1
+    while n<3:
+        header(MISSIONS[2]);text("WHEEL RECOVERY // TIMING REPAIR",W//2,280,M,WHITE,True)
+        bar=pygame.Rect(190,390,800,34);pygame.draw.rect(screen,(50,62,72),bar,border_radius=8)
+        pygame.draw.rect(screen,GREEN,(530,390,120,34),border_radius=8)
+        pygame.draw.circle(screen,GOLD,(bar.x+pos,407),16)
+        text(f"REPAIR BOLTS {n}/3",W//2,480,F,GOLD,True)
+        text("Press SPACE when the marker is in the green zone.",W//2,545,S,WHITE,True)
+        pygame.display.flip();pos+=d*11
+        if pos>790 or pos<8:d*=-1
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+            if e.type==pygame.KEYDOWN and e.key==pygame.K_SPACE:
+                if 340<=pos<=460:n+=1;sound("Computer_Beep.wav")
+                else:sound("Buzz_Whir.wav")
+        clock.tick(FPS)
+    return True
+def ice_task():
+    player=pygame.Rect(0,0,40,36);player.center=(460,H-205)
+    player_x=float(player.x);player_y=float(player.y)
+    drops=[];caught=0;shields=3;last_spawn=0;spawn_count=0;anchor=(205,420)
+    while caught<3 and shields>0:
+        dt=min(clock.tick(FPS)/1000,0.05)
+        now=pygame.time.get_ticks();header(MISSIONS[3])
+        keys=pygame.key.get_pressed()
+        dx=int(keys[pygame.K_RIGHT] or keys[pygame.K_d])-int(keys[pygame.K_LEFT] or keys[pygame.K_a])
+        dy=int(keys[pygame.K_DOWN] or keys[pygame.K_s])-int(keys[pygame.K_UP] or keys[pygame.K_w])
+        magnitude=math.hypot(dx,dy)
+        if magnitude:
+            speed=350*dt/magnitude
+            player_x+=dx*speed;player_y+=dy*speed
+        player_x=max(225,min(W-player.width-24,player_x))
+        player_y=max(305,min(H-player.height-175,player_y))
+        player.topleft=(round(player_x),round(player_y))
+
+        if now-last_spawn>620:
+            is_ice=spawn_count%4!=3
+            drops.append([random.uniform(270,W-55),230,is_ice,
+                          random.uniform(145,215)+caught*8,random.uniform(-55,55),
+                          random.randint(12,17)])
+            last_spawn=now;spawn_count+=1
+
+        photo_card(ARTS["phoenix_photo"],pygame.Rect(28,315,155,190),"PHOENIX ON MARS","Phoenix lander photo")
+        text("PHOENIX LANDER • STATIONARY",W//2,263,S,GOLD,True)
+        text(f"ICE SAMPLES {caught}/3",245,285,M,CYAN)
+        text(f"SHIELDS {shields}/3",W-245,285,M,GOLD)
+        active=[]
+        for drop in drops:
+            drop[0]+=drop[4]*dt;drop[1]+=drop[3]*dt
+            if drop[0]<30 or drop[0]>W-30:drop[4]*=-1
+            x,y,is_ice,_,_,radius=drop
+            center=(int(x),int(y))
+            if is_ice:
+                pygame.draw.circle(screen,(45,124,170),center,radius+7)
+                crystal=[(center[0]-radius,center[1]+radius//2),(center[0]-radius//2,center[1]-radius),
+                         (center[0]+radius//3,center[1]-radius-3),(center[0]+radius,center[1]-radius//3),
+                         (center[0]+radius//2,center[1]+radius),(center[0]-radius//3,center[1]+radius//2)]
+                pygame.draw.polygon(screen,(105,208,239),crystal)
+                pygame.draw.polygon(screen,(221,249,255),crystal,2)
+                pygame.draw.line(screen,WHITE,(center[0]-4,center[1]-radius//2),(center[0]+1,center[1]+radius//3),2)
+                text("ICE",center[0]+radius+5,center[1]-8,T,CYAN)
+            else:
+                pygame.draw.circle(screen,(65,58,56),center,radius+2)
+                pygame.draw.circle(screen,(115,92,78),center,radius,2)
+            drop_rect=pygame.Rect(int(x-radius),int(y-radius),radius*2,radius*2)
+            if player.colliderect(drop_rect):
+                if is_ice:
+                    caught+=1;sound("Collect.wav")
+                else:
+                    shields-=1;sound("Buzz_Whir.wav")
+                if caught>=3:break
+            elif y<H+radius:
+                active.append(drop)
+        drops=active
+        pygame.draw.line(screen,(208,177,128),anchor,player.center,8)
+        pygame.draw.circle(screen,(233,201,146),anchor,13)
+        pygame.draw.circle(screen,CYAN,player.center,player.width//2,3)
+        pygame.draw.polygon(screen,(225,192,132),[(player.left,player.bottom),(player.right,player.bottom),
+                          (player.right-5,player.top+9),(player.left+5,player.top+9)])
+        text("ROBOTIC ARM SCOOP",player.centerx,player.bottom+7,T,CYAN,True)
+        text("Move the scoop with WASD / arrows • collect glowing ice • dodge dark dust",W//2,665,S,WHITE,True)
+        text("Phoenix stays parked; only its robotic arm moves.",W//2,695,S,GOLD,True)
+        pygame.display.flip()
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+    if shields<=0:
+        message("PHOENIX SAMPLE RUN ENDED","Dust damaged all three shields. Try the ice collection again.")
+        return False
+    return True
+def quake_task():
+    n=0;p=0;d=1
+    while n<3:
+        header(MISSIONS[4]);text("LISTEN FOR THE MARSQUAKE",W//2,285,M,WHITE,True)
+        r=pygame.Rect(150,390,880,20);pygame.draw.rect(screen,(50,65,80),r,border_radius=8)
+        pygame.draw.rect(screen,GREEN,(555,375,70,50),2,border_radius=5)
+        pygame.draw.line(screen,CYAN,(r.x+p,370),(r.x+p,430),5)
+        text(f"QUAKE SIGNALS MATCHED {n}/3",W//2,490,F,GOLD,True)
+        text("Press SPACE when the pulse crosses the centre band.",W//2,550,S,WHITE,True)
+        pygame.display.flip();p+=d*13
+        if p>880 or p<0:d*=-1
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+            if e.type==pygame.KEYDOWN and e.key==pygame.K_SPACE:
+                if 405<=p<=475:n+=1;sound("Computer_Beep.wav")
+                else:sound("Buzz_Whir.wav")
+        clock.tick(FPS)
+    return True
+def rotor_task():
+    a=45
+    while True:
+        header(MISSIONS[5]);cx,cy=W//2,435
+        pygame.draw.circle(screen,(25,42,58),(cx,cy),115,3)
+        for deg in (-30,-15,0,15,30):
+            rad=math.radians(deg)
+            target=(int(cx+math.cos(rad)*132),int(cy+math.sin(rad)*132))
+            pygame.draw.circle(screen,GREEN,target,6)
+        for i in range(3):
+            ang=math.radians(a+i*120);end=(cx+math.cos(ang)*105,cy+math.sin(ang)*105)
+            pygame.draw.line(screen,CYAN,(cx,cy),end,12);pygame.draw.circle(screen,GOLD,end,10)
+        pygame.draw.circle(screen,WHITE,(cx,cy),15)
+        text("ROTOR ALIGNMENT",W//2,280,M,WHITE,True)
+        text("Click either side or use LEFT/RIGHT / A-D to rotate.",W//2,590,S,WHITE,True)
+        text("Press SPACE in the green zone (within 30°) to lock.",W//2,620,S,GOLD,True)
+        text(f"ALIGNMENT {a%360}° • TARGET ±30°",W//2,655,F,CYAN,True);pygame.display.flip()
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+            if e.type==pygame.MOUSEBUTTONDOWN and e.button==1:
+                a=(a+(15 if e.pos[0]>=cx else -15))%360
+            if e.type==pygame.KEYDOWN:
+                if e.key in (pygame.K_LEFT,pygame.K_a):a=(a-15)%360
+                if e.key in (pygame.K_RIGHT,pygame.K_d):a=(a+15)%360
+                if e.key==pygame.K_SPACE:
+                    if min(a%360,360-a%360)<=30:sound("Collect.wav");return True
+                    sound("Buzz_Whir.wav")
+        clock.tick(FPS)
+def storm_task():
+    rover=pygame.Rect(760,445,62,42)
+    packs=[pygame.Rect(x,random.randint(300,590),25,25) for x in (900,700,500,300)]
+    particles=[];wall=W+100;energy=100;got=0;frame=0;hit_cooldown=0
+    while energy>0 and got<3:
+        header(MISSIONS[6]);frame+=1;wall-=.55;energy-=.025
+        pygame.draw.rect(screen,(73,48,48),(max(0,int(wall)),220,max(0,W-int(wall)),390))
+        pygame.draw.rect(screen,(128,80,70),(max(0,int(wall)),220,12,390))
+        if frame%32==0:
+            particles.append([W+random.randint(0,100),random.randint(250,610),random.randint(4,8),random.uniform(3.0,5.0)])
+        for particle in particles[:]:
+            particle[0]-=particle[3]
+            if particle[0]<-particle[2]:
+                particles.remove(particle);continue
+            p_rect=pygame.Rect(int(particle[0]-particle[2]),int(particle[1]-particle[2]),particle[2]*2,particle[2]*2)
+            pygame.draw.circle(screen,(205,157,127),(int(particle[0]),int(particle[1])),particle[2])
+            if rover.colliderect(p_rect) and hit_cooldown<=0:
+                energy-=12;hit_cooldown=45;sound("Buzz_Whir.wav")
+        if hit_cooldown>0:hit_cooldown-=1
+        for b in packs:
+            pygame.draw.rect(screen,(255,207,104),b,border_radius=5)
+            pygame.draw.rect(screen,(70,86,103),(b.x+6,b.y+6,13,13),border_radius=3)
+            pygame.draw.rect(screen,GREEN,(b.right,b.y+8,4,9),border_radius=2)
+        pygame.draw.rect(screen,(35,68,78),rover,border_radius=7);pygame.draw.rect(screen,CYAN,rover,2,border_radius=7)
+        pygame.draw.circle(screen,(210,225,230),(rover.centerx,rover.y-5),12,2)
+        energy=max(0,energy)
+        for b in packs[:]:
+            if rover.colliderect(b):
+                packs.remove(b);got+=1;energy=min(100,energy+20);sound("Collect.wav")
+        text(f"ENERGY {int(energy)}%",70,270,M,GOLD);text(f"CHARGE PACKS {got}/3",70,320,F,WHITE)
+        text("WASD / ARROWS: steer • Gather 3 packs • Dodge moving dust • Stay ahead of the wall",W//2,650,S,WHITE,True)
+        pygame.display.flip()
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+        keys=pygame.key.get_pressed()
+        dx=(keys[pygame.K_RIGHT] or keys[pygame.K_d])-(keys[pygame.K_LEFT] or keys[pygame.K_a])
+        dy=(keys[pygame.K_DOWN] or keys[pygame.K_s])-(keys[pygame.K_UP] or keys[pygame.K_w])
+        rover.x=max(35,min(W-95,rover.x+int(dx*4.5)))
+        rover.y=max(260,min(615,rover.y+int(dy*4.5)))
+        if wall<=rover.right:energy-=.32
+        clock.tick(FPS)
+    return got>=3 and energy>0
+TASKS={"camera":camera_task,"drive":drive_task,"wheel":wheel_task,"ice":ice_task,"quake":quake_task,"rotor":rotor_task,"storm":storm_task}
+def final_story():
+    pages=[
+    ("MISSION CONTROL","The storm has passed. Opportunity's last communication arrived on June 10, 2018. NASA declared the mission over in February 2019."),
+    ("ROBOT GUIDE","Opportunity was not found as a working rover. We recovered its archive: extraordinary engineering, remarkable discoveries, and a story that still guides Mars exploration."),
+    ("MISSION CONTROL","Opportunity travelled 45.16 kilometres and operated for 5,111 sols. Its final resting place is Perseverance Valley. The search is over, but the science continues.")]
+    for who,msg in pages:
+        bg();sprite(ARTS["rover"],(W//2,365),250);dialogue(who,msg);pygame.display.flip();wait()
+    happy_cutscene()
+    ending_animation()
+def happy_cutscene():
+    start=pygame.time.get_ticks()
+    sound("Collect.wav",0.65)
+    while True:
+        elapsed=(pygame.time.get_ticks()-start)/1000
+        if elapsed>=5.5:return
+        draw_stage(ARTS["opportunity_photo"])
+        shade=pygame.Surface((W,H),pygame.SRCALPHA);shade.fill((4,10,26,155));screen.blit(shade,(0,0))
+        for i in range(28):
+            angle=elapsed*1.7+i*math.tau/28
+            radius=150+28*math.sin(elapsed*2+i)
+            point=(int(W//2+math.cos(angle)*radius),int(375+math.sin(angle)*radius*.68))
+            pygame.draw.circle(screen,(255,204,108) if i%2 else CYAN,point,3+(i%3))
+        bounce=abs(math.sin(elapsed*3.1))*28
+        draw_robot((W//2,390-bounce),190,happy=True)
+        amaya_sprite((W//2-205,390-bounce),145)
+        amaya_sprite((W//2+205,390-bounce),145)
+        text("AMAYA'S HAPPY SIGNAL",W//2,90,B,GOLD,True)
+        panel=pygame.Rect(105,565,970,105);box(panel,(5,12,25),(85,165,183))
+        para("“We found the archive. Opportunity's story is safe—and the next explorers can learn from it.”",145,590,890,F,WHITE,6,2)
+        text("NASA/JPL-CALTECH • OPPORTUNITY PANORAMA PIA18595",W//2,690,T,PALE,True)
+        text("SPACE / ENTER / X TO SKIP",W//2,725,T,CYAN,True)
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type==pygame.QUIT:pygame.quit();sys.exit()
+            if event.type==pygame.KEYDOWN and event.key in (pygame.K_SPACE,pygame.K_RETURN,pygame.K_x):return
+        clock.tick(FPS)
+def ending_animation():
+    start=pygame.time.get_ticks()
+    while True:
+        elapsed=(pygame.time.get_ticks()-start)/1000
+        if elapsed>=8:return
+        draw_stage(ARTS["opportunity_photo"])
+        shade=pygame.Surface((W,H),pygame.SRCALPHA);shade.fill((3,8,22,180));screen.blit(shade,(0,0))
+        pygame.draw.ellipse(screen,(115,211,228),(65,250,390,220),2)
+        pygame.draw.ellipse(screen,(255,204,108),(95,275,330,170),2)
+        for i in range(12):
+            angle=elapsed*1.2+i*math.tau/12
+            pygame.draw.circle(screen,(255,204,108) if i%2 else CYAN,
+                (int(260+math.cos(angle)*190),int(365+math.sin(angle)*102)),5)
+        draw_robot((260,420-abs(math.sin(elapsed*2.7))*17),185,happy=True)
+        amaya_sprite((420,420-abs(math.sin(elapsed*2.7))*17),135)
+        panel=pygame.Rect(475,125,650,545);box(panel,(5,12,25),(255,204,108))
+        text("OPPORTUNITY ARCHIVE RESTORED",panel.centerx,165,M,GOLD,True)
+        text("45.16 KM",panel.centerx,250,B,WHITE,True)
+        text("5,111 MARTIAN SOLS",panel.centerx,325,M,CYAN,True)
+        text("90-sol planned mission • 14+ years exploring",panel.centerx,375,S,PALE,True)
+        text("NASA MISSION DATA",panel.x+30,430,S,GOLD)
+        para(SOURCES["Opportunity"],panel.x+30,458,panel.width-60,T,CYAN,2,2)
+        text("IMAGE: NASA/JPL-CALTECH • PIA18595",panel.x+30,520,T,GOLD)
+        para(SOURCES["Opportunity panorama"],panel.x+30,545,panel.width-60,T,CYAN,2,2)
+        text("X / SPACE TO SKIP ENDING",panel.centerx,640,T,PALE,True)
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type==pygame.QUIT:pygame.quit();sys.exit()
+            if event.type==pygame.KEYDOWN and event.key in (pygame.K_x,pygame.K_SPACE):return
+        clock.tick(FPS)
+def main():
+    title();opening_animation();prelude();callas_feature();intro();mars_map_intro();done=set();seen=set()
+    while len(done)<7:
+        i=mission_map(done);m=MISSIONS[i]
+        fact_popup(seen);briefing(m)
+        if i==6 and len(done)<6:
+            message("OPPORTUNITY FILE LOCKED","Recover the six earlier mission archives before the final storm.")
+            continue
+        success=TASKS[m["task"]]()
+        if not success:
+            guide(m);continue
+        done.add(m["id"]);sound("Collect.wav")
+        clue(m,i);message("MISSION ARCHIVE UPDATED",m["fact"],m["source"])
+        if len(FOUND_GALACTIC_EGGS)<len(GALACTIC_EGGS) and random.random()<0.3:
+            space_easter_egg()
+        if i==6:
+            final_story()
+            break
+    while True:
+        bg(pygame.time.get_ticks())
+        text("MISSION COMPLETE",W//2,115,B,GOLD,True)
+        text("SPACE QUEST I: ENDEAVOUR FOR OPPORTUNITY",W//2,190,M,WHITE,True)
+        sprite(ARTS["rover"],(W//2,390),240)
+        para("You recovered the mission archives, explored Mars, and survived the final dust-storm simulation. Opportunity's signal is gone, but its discoveries remain part of NASA's Mars story.",220,545,740,F,WHITE,7,3)
+        text("S SOURCES     ESC QUIT",W//2,700,S,CYAN,True);pygame.display.flip()
+        for e in pygame.event.get():
+            if e.type==pygame.QUIT:pygame.quit();sys.exit()
+            if e.type==pygame.KEYDOWN:
+                if e.key==pygame.K_s:sources_screen()
+                if e.key==pygame.K_ESCAPE:pygame.quit();sys.exit()
+        clock.tick(FPS)
+
+if __name__=="__main__":main()
 
